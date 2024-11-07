@@ -257,7 +257,7 @@ func (w *FileWorkspace) forceClone(logger logging.SimpleLogging, c wrappedGitCon
 	fetchRef := fmt.Sprintf("+refs/heads/%s:", c.pr.HeadBranch)
 	fetchRemote := "head"
 	if w.GithubAppEnabled {
-		fetchRef = fmt.Sprintf("pull/%d/head:%s", c.pr.Num, c.pr.HeadBranch)
+		fetchRef = fmt.Sprintf("pull/%d/head:%s/%s", c.pr.Num, c.pr.Author, c.pr.HeadBranch)
 		fetchRemote = "origin"
 	}
 	if !w.CheckoutMerge {
