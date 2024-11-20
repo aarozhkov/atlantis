@@ -254,10 +254,12 @@ func (w *FileWorkspace) forceClone(logger logging.SimpleLogging, c wrappedGitCon
 	}
 
 	// if branch strategy, use depth=1
-	fetchRef := fmt.Sprintf("+refs/heads/%s:", c.pr.HeadBranch)
+	branchName := c.pr.HeadBranch // Local branch name to use. In case of forks should include fork author name
+	fetchRef := fmt.Sprintf("+refs/heads/%s:", branchName)
 	fetchRemote := "head"
 	if w.GithubAppEnabled {
-		fetchRef = fmt.Sprintf("pull/%d/head:%s/%s", c.pr.Num, c.pr.Author, c.pr.HeadBranch)
+		branchName = fmt.Sprintf("%s/%s", c.pr.Author, c.pr.HeadBranch)
+		fetchRef = fmt.Sprintf("pull/%d/head:%s", c.pr.Num, branchName)
 		fetchRemote = "origin"
 	}
 	if !w.CheckoutMerge {
@@ -268,7 +270,7 @@ func (w *FileWorkspace) forceClone(logger logging.SimpleLogging, c wrappedGitCon
 		if err = w.wrappedGit(logger, c, "fetch", fetchRemote, fetchRef); err != nil {
 			return err
 		}
-		return w.wrappedGit(logger, c, "switch", c.pr.HeadBranch)
+		return w.wrappedGit(logger, c, "switch", branchName)
 	}
 
 	// if merge strategy...
