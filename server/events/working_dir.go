@@ -267,7 +267,13 @@ func (w *FileWorkspace) forceClone(logger logging.SimpleLogging, c wrappedGitCon
 	}
 
 	// During testing, we mock some of this out.
-	headCloneURL := c.head.CloneURL
+	// Dremio: With GH App and Private repo in ORG we dont have access to repo forks
+	// Instead we need to use pull/PR_NUMBER/head branch for plan
+	// Use baserepo url
+	// clone base repo
+	// fetch pull request branch
+	// switch to pull request branch
+	headCloneURL := c.pr.BaseRepo.CloneURL
 	if w.TestingOverrideHeadCloneURL != "" {
 		headCloneURL = w.TestingOverrideHeadCloneURL
 	}
@@ -277,8 +283,23 @@ func (w *FileWorkspace) forceClone(logger logging.SimpleLogging, c wrappedGitCon
 	}
 
 	// if branch strategy, use depth=1
+	branchName := c.pr.HeadBranch // Local branch name to use. In case of forks should include fork author name
+	fetchRef := fmt.Sprintf("+refs/heads/%s:", branchName)
+	fetchRemote := "head"
+	if w.GithubAppEnabled {
+		branchName = fmt.Sprintf("%s/%s", c.pr.Author, c.pr.HeadBranch)
+		fetchRef = fmt.Sprintf("pull/%d/head:%s", c.pr.Num, branchName)
+		fetchRemote = "origin"
+	}
 	if !w.CheckoutMerge {
-		return w.wrappedGit(logger, c, "clone", "--depth=1", "--branch", c.pr.HeadBranch, "--single-branch", headCloneURL, c.dir)
+		logger.Info("Not merge stragegy, using branch strategy")
+		if err = w.wrappedGit(logger, c, "clone", "--depth=1", "--single-branch", headCloneURL, c.dir); err != nil {
+			return err
+		}
+		if err = w.wrappedGit(logger, c, "fetch", fetchRemote, fetchRef); err != nil {
+			return err
+		}
+		return w.wrappedGit(logger, c, "switch", branchName)
 	}
 
 	// if merge strategy...
